@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+
+# Data
+data_raw/
+data/
+results/
+
+# env
+.venv/
+.env
+
+# mac
+.DS_Store
