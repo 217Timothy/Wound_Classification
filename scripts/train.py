@@ -93,11 +93,24 @@ def main():
     print(args)
     
     # ==========================================
-    # Checkpoint and Logging
+    # Checkpoint
     # ==========================================
     checkpoint_path = f"checkpoints/{args.version}/{args.run_name}"
     os.makedirs(checkpoint_path, exist_ok=True)
     print(f"[CheckPoint] Checkpoint directory: {checkpoint_path}")
+    
+    # ==========================================
+    # Logging
+    # ==========================================
+    log_dir = f"logs/{args.version}"
+    os.makedirs(log_dir, exist_ok=True)
+
+    log_path = os.path.join(log_dir, f"{args.run_name}.csv")
+
+    # 如果檔案不存在 → 建 header
+    if not os.path.exists(log_path):
+        with open(log_path, "w") as f:
+            f.write("epoch,train_loss,val_loss,val_acc,val_recall\n")
     
     # ==========================================
     # Dataset and Dataloader
@@ -162,7 +175,7 @@ def main():
         # ==========================================
         # Validate
         # ==========================================
-        val_loss, val_acc = validate(
+        val_loss, val_acc, val_recall = validate(
             model,
             val_loader,
             criterion,
@@ -173,6 +186,19 @@ def main():
         print(f"Train Loss: {train_loss:.4f}")
         print(f"Val Loss:   {val_loss:.4f}")
         print(f"Val Acc:    {val_acc:.4f}")
+        print(f"Val Recall: {val_recall:.4f}")
+        
+        # ==========================================
+        # Save log
+        # ==========================================
+        with open(log_path, "a") as f:
+            f.write(
+                f"{epoch},"
+                f"{train_loss:.6f},"
+                f"{val_loss:.6f},"
+                f"{val_acc:.6f},"
+                f"{val_recall:.6f}\n"
+            )
         
         is_best = val_acc > best_acc
         if is_best:
@@ -182,7 +208,8 @@ def main():
                 "state_dict": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
                 "val_loss": val_loss,
-                "val_acc": val_acc
+                "val_acc": val_acc,
+                "val_recall": val_recall
             }
         save_checkpoint(
             state=checkpoint,
