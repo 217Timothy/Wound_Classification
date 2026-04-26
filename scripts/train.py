@@ -189,3 +189,7 @@ def main():
             is_best=is_best,
             checkpoint_dir=checkpoint_path
         )
+
+
+if __name__ == "__main__":
+    main()
