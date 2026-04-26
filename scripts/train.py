@@ -129,6 +129,7 @@ def main():
         transform=get_val_transforms()
     )
     
+    class_names = list(train_dataset.class_to_idx.keys())
     class_weights = compute_class_weights(train_dataset).to(DEVICE)
     train_sampler = create_weight_sampler(train_dataset)
     
@@ -184,7 +185,8 @@ def main():
             model,
             val_loader,
             criterion,
-            DEVICE
+            DEVICE,
+            class_names=class_names
         )
 
         print(f"\nEpoch [{epoch}/{args.epochs}]")
