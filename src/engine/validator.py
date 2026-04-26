@@ -1,11 +1,11 @@
 import torch
-import numpy as np
 from sklearn.metrics import recall_score, confusion_matrix
+
 
 def validate(model, loader, criterion, device, class_names=None):
     model.eval()
 
-    total_loss = 0
+    total_loss = 0.0
     correct = 0
     total = 0
 
@@ -27,35 +27,57 @@ def validate(model, loader, criterion, device, class_names=None):
             correct += (preds == labels).sum().item()
             total += labels.size(0)
 
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
+            # 🔥 修這裡
+            all_preds.extend(preds.cpu().numpy().tolist())
+            all_labels.extend(labels.cpu().numpy().tolist())
 
-    acc = correct / total
-    recall = recall_score(all_labels, all_preds, average="macro")
+    # =============================
+    # Metrics
+    # =============================
+    acc = correct / total if total > 0 else 0.0
 
-    # ==========================================
-    # 🔥 Per-class recall
-    # ==========================================
+    macro_recall = recall_score(
+        all_labels,
+        all_preds,
+        average="macro",
+        zero_division=0
+    )
+
     per_class_recall = recall_score(
         all_labels,
         all_preds,
-        average=None
+        average=None,
+        zero_division=0
     )
 
-    print("\n=== Per-class Recall ===")
-    if class_names:
-        for i, r in enumerate(per_class_recall): # type: ignore
-            print(f"{class_names[i]:12s}: {r:.4f}")
+    # =============================
+    # Convert to dict（JSON-ready）
+    # =============================
+    if class_names is not None:
+        per_class_dict = {
+            class_names[i]: float(per_class_recall[i]) # type: ignore
+            for i in range(len(per_class_recall))  # type: ignore
+        }
     else:
-        for i, r in enumerate(per_class_recall): # type: ignore
-            print(f"class {i}: {r:.4f}")
+        per_class_dict = {
+            f"class_{i}": float(per_class_recall[i]) # type: ignore
+            for i in range(len(per_class_recall))  # type: ignore
+        }
 
-    # ==========================================
-    # 🔥 Confusion Matrix
-    # ==========================================
-    cm = confusion_matrix(all_labels, all_preds)
+    results = {
+        "accuracy": float(acc),
+        "macro_recall": float(macro_recall),
+        "per_class_recall": per_class_dict,
+        
+        "preds": all_preds, 
+        "labels": all_labels
+    }
 
-    print("\n=== Confusion Matrix ===")
-    print(cm)
+    # =============================
+    # Print（debug / train用）
+    # =============================
+    print("\n=== Per-class Recall ===")
+    for k, v in per_class_dict.items():
+        print(f"{k:12s}: {v:.4f}")
 
-    return total_loss / len(loader), acc, recall
+    return total_loss / len(loader), results

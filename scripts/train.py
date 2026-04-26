@@ -52,21 +52,14 @@ def get_args():
 
     parser.add_argument("--version", type=str)
     parser.add_argument("--run_name", type=str)
-    parser.add_argument("--datasets", type=str, nargs="+")
     
     parser.add_argument("--model", type=str, default="efficientnet")
+    parser.add_argument("--loss_name", type=str, default="cross_entropy")
 
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--lr", type=float)
     parser.add_argument("--batch_size", type=int)
     parser.add_argument("--num_workers", type=int)
-
-    # parser.add_argument("--pretrained_ckpt", type=str, default=None)
-    # parser.add_argument("--freeze_encoder_epochs", type=int, default=0)
-    # parser.add_argument("--grad_clip", type=float, default=1.0)
-
-    # parser.add_argument("--cache_data", action="store_true")
-    # parser.add_argument("--loss_name", type=str, default="focal_tversky")
 
     parser.set_defaults(**defaults)
     args = parser.parse_args(remaining_args)
@@ -91,6 +84,18 @@ def build_model(backbone_name, num_classes=5):
         backbone_name=backbone_name,
         num_classes=num_classes
     ).to(DEVICE)
+
+
+# ==========================================
+# Loss
+# ==========================================
+def build_criterion(loss_name, class_weights=None):
+    if loss_name == "cross_entropy":
+        if class_weights is not None:
+            class_weights = torch.tensor(class_weights, dtype=torch.float).to(DEVICE)
+        return nn.CrossEntropyLoss(weight=class_weights)
+    else:
+        raise ValueError(f"Unsupported loss: {loss_name}")
 
 
 def main():
@@ -155,7 +160,7 @@ def main():
     # ==========================================
     # Loss
     # ==========================================
-    criterion = nn.CrossEntropyLoss(weight=class_weights.to(DEVICE))
+    criterion = build_criterion(loss_name=args.loss_name, class_weights=class_weights.to(DEVICE))
     
     # ==========================================
     # Optimizer
@@ -181,7 +186,7 @@ def main():
         # ==========================================
         # Validate
         # ==========================================
-        val_loss, val_acc, val_recall = validate(
+        val_loss, val_results = validate(
             model,
             val_loader,
             criterion,
@@ -192,8 +197,8 @@ def main():
         print(f"\nEpoch [{epoch}/{args.epochs}]")
         print(f"Train Loss: {train_loss:.4f}")
         print(f"Val Loss:   {val_loss:.4f}")
-        print(f"Val Acc:    {val_acc:.4f}")
-        print(f"Val Recall: {val_recall:.4f}")
+        print(f"Val Acc:    {val_results['accuracy']:.4f}")
+        print(f"Val Recall: {val_results['macro_recall']:.4f}")
         
         # ==========================================
         # Save log
@@ -203,20 +208,20 @@ def main():
                 f"{epoch},"
                 f"{train_loss:.6f},"
                 f"{val_loss:.6f},"
-                f"{val_acc:.6f},"
-                f"{val_recall:.6f}\n"
+                f"{val_results['accuracy']:.6f},"
+                f"{val_results['macro_recall']:.6f}\n"
             )
         
-        is_best = val_acc > best_acc
+        is_best = val_results['accuracy'] > best_acc
         if is_best:
-            best_acc = val_acc
+            best_acc = val_results['accuracy']
         checkpoint = {
                 "epoch": epoch,
                 "state_dict": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
                 "val_loss": val_loss,
-                "val_acc": val_acc,
-                "val_recall": val_recall
+                "val_acc": val_results['accuracy'],
+                "val_recall": val_results['macro_recall']
             }
         save_checkpoint(
             state=checkpoint,

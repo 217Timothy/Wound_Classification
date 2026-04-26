@@ -15,11 +15,11 @@ def save_checkpoint(state, is_best, checkpoint_dir, filename='last.pt'):
         print(f"[CheckPoint] ✅ New best model saved! Accuracy: {state.get('val_acc', 0):.4f}. Recall: {state.get('val_recall', 0): .4f}")
 
 
-def load_checkpoint(checkpoint_path, model, optimizer=None):
+def load_checkpoint(checkpoint_path, model, optimizer=None, device=None):
     if not os.path.exists(checkpoint_path):
         raise FileNotFoundError(f"❌ Checkpoint not found at: {checkpoint_path}")
     
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['state_dict'])
     if optimizer:
         optimizer.load_state_dict(checkpoint['optimizer'])

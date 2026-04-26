@@ -10,9 +10,14 @@ run_name: exp1
 model: efficientnet # efficientnet / resnet（之後可加）
 
 # ==========================================
+# Loss
+# ==========================================
+loss_name: cross_entropy # cross_entropy / focal_loss（之後可加）
+
+# ==========================================
 # Training
 # ==========================================
-epochs: 10
+epochs: 50
 lr: 0.001
 batch_size: 16
 num_workers: 4
